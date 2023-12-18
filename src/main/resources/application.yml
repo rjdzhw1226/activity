@@ -1,0 +1,46 @@
+server:
+  port: 9000
+# url: jdbc:mysql://localhost:3306/activiti?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false&serverTimezone=UTC&nullCatalogMeansCurrent=true
+# username: root
+# password: 123456
+# driver-class-name: com.mysql.cj.jdbc.Driver
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      url: jdbc:mysql://localhost:3306/activiti?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false&serverTimezone=UTC&nullCatalogMeansCurrent=true
+      username: root
+      password: 123456
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      max-active: 20
+      max-wait: 20000
+      min-idle: 3
+      pool-prepared-statements: true
+      initial-size: 1
+      test-while-idle: true
+      validation-query: select 1 from dual
+      test-on-borrow: false
+      test-on-return: false
+      # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+      time-between-eviction-runs-millis: 60000
+      # 配置一个连接在池中最小生存的时间，单位是毫秒
+      min-evictable-idle-time-millis: 300000
+      filters: stat
+      use-global-data-source-stat: true
+      connect-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+  mybatis:
+    type-aliases-package: com.activity.pojo
+    mapper-locations: classpath:mapper/*.xml
+  #activiti配置
+  activiti:
+    #数据库策略false（默认） true create-drop drop-create
+    database-schema-update: true
+    db-history-used: true
+    #工作流日志级别
+    history-level: activity
+    #自动部署验证设置：true-开启（默认）
+    check-process-definitions: false
+logging:
+  level:
+    org.activiti.engine.impl.persistence.entity: trace
+

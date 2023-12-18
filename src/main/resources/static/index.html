@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/plugins/element-ui/index.css">
+  <script src="/plugins/vue/vue.js"></script>
+  <script src="/plugins/element-ui/index.js"></script>
+  <script src="/plugins/axios/axios.min.js"></script>
+  <title>首页</title>
+</head>
+<body>
+<div id="app">
+  <el-button>
+    <el-link href="/activiti/create" target="_blank">创建模型</el-link>
+  </el-button>
+  <el-table
+    :data="tableDataModel"
+    stripe
+    style="width: 100%">
+    <el-table-column
+      prop="id"
+      label="模型id"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="name"
+      label="模型名"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="editorSourceValueId"
+      label="源文件id"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="editorSourceExtraValueId"
+      label="源图id"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      label="部署id"
+      width="auto">
+      <template slot-scope="scope">
+        <i class="el-icon-time"></i>
+        <span style="margin-left: 10px">{{ scope.row.persistentState.deploymentId == null ? '未部署': scope.row.persistentState.deploymentId }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column
+      label="操作"
+      width="auto"
+      align="center"
+    >
+      <template slot-scope="scope">
+        <el-button
+          type="text"
+          size="small"
+          @click="edit(scope.row.id)">
+          编辑模型
+        </el-button>
+        <el-button
+          type="text"
+          size="small"
+          class="greenBug"
+          @click="deleteModel(scope.row.id)">
+          删除模板
+        </el-button>
+        <el-button
+          type="text"
+          size="small"
+          @click="exportModel(scope.row)">
+          导出模板
+        </el-button>
+        <el-button
+          type="text"
+          size="small"
+          @click="findImg(scope.row)">
+          查看模板
+        </el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+</div>
+</body>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      tableDataModel: [],
+    },
+    created() {
+      this.queryModel()
+    },
+    mounted() {
+
+    },
+    methods: {
+      queryModel(){
+        axios.get("/activiti/query").then((res)=>{
+          this.tableDataModel = res.data;
+        })
+      },
+      edit(id){
+        window.location.href = "/activiti/edit/" + id;
+      },
+      deleteModel(id){
+        axios.get("/activiti/close/"+ id).then((res)=>{
+          this.$message({
+            type: 'info',
+            message: res.data
+          });
+        })
+        this.queryModel()
+      },
+      exportModel(node){
+        axios.get("/activiti/export/"+node.id+"",{responseType:'blob'}).then((response)=>{
+          let blob = new Blob([response.data]);
+          let filename = node.name + ".bpmn";
+          const f = document.createElement('a');
+          f.download = filename;
+          f.style.display = 'none';
+          f.href = URL.createObjectURL(blob);
+          document.body.appendChild(f);
+          f.click();
+          URL.revokeObjectURL(f.href);
+          document.body.removeChild(f);
+        })
+      },
+      findImg(node){
+        // window.location.href = "/activiti/showmodelpicture/" + id;
+        axios.get("/activiti/showmodelpicture/"+node.id+"",{responseType:'blob'}).then((response)=>{
+          let blob = new Blob([response.data]);
+          let filename = node.name + ".png";
+          const f = document.createElement('a');
+          f.download = filename;
+          f.style.display = 'none';
+          f.href = URL.createObjectURL(blob);
+          document.body.appendChild(f);
+          f.click();
+          URL.revokeObjectURL(f.href);
+          document.body.removeChild(f);
+        })
+      },
+    },
+
+  })
+</script>
+</html>
