@@ -14,6 +14,9 @@ import org.activiti.bpmn.model.Process;
 import org.activiti.editor.constants.ModelDataJsonConstants;
 import org.activiti.editor.language.json.converter.BpmnJsonConverter;
 import org.activiti.engine.*;
+import org.activiti.engine.history.HistoricActivityInstance;
+import org.activiti.engine.history.HistoricProcessInstance;
+import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.Model;
 import org.activiti.engine.repository.ModelQuery;
@@ -156,9 +159,32 @@ public class ActivitiController {
   /**
    * 流程启动
    */
+  @RequestMapping("/start/evection")
+  @ResponseBody
+  public String start(@RequestBody ProcessStart processStart){
+    //带着username传过来查角色和对应审批人 然后启动就ok
+    // ？事务业务和流程的问题
+    //一张配置表 存对应的公司下对应的科室 对应的人的审核人 一张公司表和科室表
+    Map<String,Object> map = new HashMap<>();
+    Evection eve = new Evection();
+    eve.setDays(4d);
+    map.put("evection", eve);
+    //创建人 这里应该是传过来的username
+    map.put("assigness0", processStart.getUsername());
+    //后面是对应审批人
+    map.put("assigness1", "lisi");
+    map.put("assigness2", "wangwu");
+    map.put("assigness3", "zhaoliu");
+    //这的s1关联自己的业务表 达到分离流程和业务的功能
+    ProcessInstance instance = runtimeService.startProcessInstanceByKey("process","", map);
+    System.out.println(instance.getProcessDefinitionId());
+    System.out.println(instance.getActivityId());
+    return "启动成功，启动ID=" + instance.getId();
+  }
+
   @RequestMapping("/start")
   @ResponseBody
-  public String startDemo(@RequestBody ProcessStart processStart){
+  public String startDemo(){
     //带着username传过来查角色和对应审批人 然后启动就ok
     // ？事务业务和流程的问题
     //一张配置表 存对应的公司下对应的科室 对应的人的审核人 一张公司表和科室表
@@ -173,7 +199,8 @@ public class ActivitiController {
     map.put("assigness2", "wangwu");
     map.put("assigness3", "zhaoliu");
     //这的s1关联自己的业务表 达到分离流程和业务的功能
-    ProcessInstance instance = runtimeService.startProcessInstanceByKey("process","", processStart.getUsername());
+//    ProcessInstance instance = runtimeService.startProcessInstanceByKey("process","", map);
+    ProcessInstance instance = runtimeService.startProcessInstanceByKey("process", map);
     System.out.println(instance.getProcessDefinitionId());
     System.out.println(instance.getActivityId());
     return "启动成功，启动ID=" + instance.getId();

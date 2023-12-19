@@ -19,7 +19,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <activiti.version>6.0.0</activiti.version>
+        <activiti.version>5.22.0</activiti.version>
         <log4j.version>1.2.12</log4j.version>
     </properties>
 
@@ -35,6 +35,26 @@
                     <artifactId>spring-boot-autoconfigure</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.activiti</groupId>
+            <artifactId>activiti-engine</artifactId>
+            <version>${activiti.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+              </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.activiti</groupId>
+            <artifactId>activiti-diagram-rest</artifactId>
+            <version>${activiti.version}</version>
         </dependency>
         <!--  activiti 涉及相关库（start）  -->
         <dependency>
@@ -71,6 +91,11 @@
             <artifactId>activiti-image-generator</artifactId>
             <version>5.22.0</version>
         </dependency>
+<!--      <dependency>-->
+<!--          <groupId>org.activiti</groupId>-->
+<!--          <artifactId>activiti-diagram-rest</artifactId>-->
+<!--          <version>5.22.0</version>-->
+<!--      </dependency>-->
         <dependency>
             <groupId>org.activiti</groupId>
             <artifactId>activiti-explorer</artifactId>

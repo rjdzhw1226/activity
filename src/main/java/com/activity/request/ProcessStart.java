@@ -10,7 +10,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProcessStart {
-  private Map<String, Object> username;
+  private String username;
   private String modelId;
   private Long days;
 }
