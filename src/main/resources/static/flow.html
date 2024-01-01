@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+  <script src="./dist/bpmn-modeler.development.js"></script>
+  <link rel="stylesheet" type="text/css" href="./dist/assets/diagram-js.css"/>
+  <link rel="stylesheet" type="text/css" href="./dist/assets/bpmn-font/css/bpmn.css"/>
+  <link rel="stylesheet" type="text/css" href="./dist/assets/bpmn-font/css/bpmn-codes.css"/>
+  <link rel="stylesheet" type="text/css" href="./dist/assets/bpmn-font/css/bpmn-embedded.css"/>
+  <link rel="stylesheet" type="text/css" href="./panel_dist/bpmn-js-properties-panel.css"/>
+  <link rel="stylesheet" href="./plugins/element-ui/index.css">
+  <script src="./plugins/vue/vue.js"></script>
+  <script src="./plugins/element-ui/index.js"></script>
+  <script src="./plugins/axios/axios.min.js"></script>
+  <script src="./diagram-viewer/js/jquery/jquery.js" type="text/javascript" charset="utf-8"></script>
+  <title>跟踪</title>
+  <style lang="scss">
+    .flowMsgPopover {
+      display: none;
+    }
+
+    .highlight:not(.djs-connection) .djs-visual > :nth-child(1) {
+      fill: rgb(251, 233, 209) !important; /* color elements as green */
+    }
+
+    .highlight g.djs-visual > :nth-child(1) {
+      stroke: rgb(214, 126, 125) !important;
+    }
+
+    .highlight-executed g.djs-visual > :nth-child(1) {
+      stroke: rgb(0, 190, 0, 1) !important;
+      fill: rgb(180, 241, 180) !important;
+    }
+
+    .highlight-line g.djs-visual > :nth-child(1) {
+      stroke: rgb(0, 190, 0) !important;
+    }
+
+    @-webkit-keyframes dynamicNode {
+      to {
+        stroke-dashoffset: 100%;
+      }
+    }
+
+    .highlight {
+      .djs-visual {
+        -webkit-animation: dynamicNode 18S linear infinite;
+        -webkit-animation-fill-mode: forwards;
+      }
+    }
+
+    .tipBox {
+      width: 300px;
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #ebeef5;
+      padding: 12px;
+      p {
+        line-height: 28px;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+ <div id="app">
+   <div>
+     <div class="bpmn-viewer-container">
+       <div
+         style="width:100%;height:20px;position: absolute; left: 20px; top: 10px; color: #000000D9;font-size: 16px;font-weight: 500">
+         {{title}}
+       </div>
+       <div style="position: absolute; left: 10px; top: 40px;z-index: 999">
+         <el-button-group key="scale-control">
+           <el-tooltip effect="light" content="缩小视图">
+             <el-button :size="headerButtonSize" :disabled="defaultZoom < 0.2" icon="el-icon-zoom-out"
+                        @click="processZoomOut()"/>
+           </el-tooltip>
+           <el-button :size="headerButtonSize">{{ Math.floor(this.defaultZoom * 10 * 10) + '%' }}</el-button>
+           <el-tooltip effect="light" content="放大视图">
+             <el-button :size="headerButtonSize" :disabled="defaultZoom > 4" icon="el-icon-zoom-in"
+                        @click="processZoomIn()"/>
+           </el-tooltip>
+           <el-tooltip effect="light" content="重置视图并居中">
+             <el-button :size="headerButtonSize" icon="el-icon-c-scale-to-original" @click="processReZoom()"/>
+           </el-tooltip>
+         </el-button-group>
+       </div>
+
+       <div id="bpmnCanvas" style="width:100%;height:500px;margin: 0 auto;"></div>
+       <div v-for="item in detailInfo" :key="item.activityId" style="width: 90%;margin: 0 auto;border-bottom: 1px dashed #333;">
+         <el-row>
+           <el-col :span="12">
+             <p>节点名称：{{item.activityName}}</p>
+             <p>审批人：{{item.assignee}}</p>
+             <p>审批状态：{{item.approvalStatus}}</p>
+           </el-col>
+           <el-col :span="12">
+             <p>审批结果：{{item.result}}</p>
+             <p>审批意见：{{item.comment}}</p>
+             <p>审批时间：{{item.endTime}}</p>
+           </el-col>
+         </el-row>
+       </div>
+     </div>
+   </div>
+ </div>
+</body>
+<script>
+  let processDefinitionId = null;
+  let processInstanceId = null;
+  let bpmnViewer = null;
+  $(document).ready(function(){
+    var query_string = {};
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      query_string[pair[0]] = pair[1];
+    }
+    processDefinitionId = query_string["processDefinitionId"];
+    processInstanceId = query_string["processInstanceId"];
+  });
+  new Vue({
+    el: '#app',
+    data: {
+      detailInfo: [],
+      executedLightNode: [],
+      highlightLine: [],
+      activeLightNode:[],
+      defaultZoom: 1,
+      nodeDetail: {},
+      scale: 1,
+      title: '流程预览',
+      showViewDialog: false,
+      instanceId: undefined
+    },
+    props: {
+      headerButtonSize: {
+        type: String,
+        default: 'small',
+        validator: value => ['default', 'medium', 'small', 'mini'].indexOf(value) !== -1
+      },
+      reviewObj: {
+        type: Object
+      }
+    },
+    name: 'reviewRuningFlow',
+    created() {
+
+    },
+    mounted() {
+      this.initPage(processInstanceId, processDefinitionId)
+    },
+    methods: {
+      initPage(instanceId, procDefId) {
+        bpmnViewer = new BpmnJS({
+          container: '#bpmnCanvas',
+          width: '100%',
+        });
+        let params = {
+          instanceId: instanceId,
+          procDefId: procDefId
+        }
+        this.instanceId = instanceId
+        let len = document.getElementsByTagName('svg').length
+        document.getElementsByTagName('svg')[len-2].setAttribute('display', 'none')
+
+        if(instanceId || procDefId) {
+          axios.post("/activiti/flow/definite", params).then(res => {
+            if (res.status === 200) {
+              this.title = res.data.modelName
+              this.highlightLine = res.data.highlightedFlowIds
+              this.executedLightNode = res.data.executedActivityIds
+              this.activeLightNode = res.data.activeActivityIds
+              if (bpmnViewer) {
+                this.importXml(res.data.modelXml)
+              }
+            } else {
+              this.$message({
+                message: res.data.msg,
+                type: 'error'
+              })
+            }
+          })}
+      },
+      getHtmlAttr(source, element, attr) {
+        let result = []
+        let reg = '<' + element + '[^<>]*?\\s' + attr + '=[\'"]?(.*?)[\'"]?\\s.*?>'
+        let matched = source.match(new RegExp(reg, 'gi'))
+
+        matched && matched.forEach(item => {
+          item && result.push(item)
+        })
+        return result
+      },
+
+      importXml(modelXml) {
+        // 处理排他网关， 注：流程图预览时，排他网关需要在对应的<bpmndi:BPMNShape>节点上添加属性isMarkerVisible="true"
+        let gatewayIds = this.getHtmlAttr(modelXml, 'exclusiveGateway', 'id')
+        let modelXmlTemp = modelXml
+        if (gatewayIds && gatewayIds.length > 0) {
+          gatewayIds.forEach(item => {
+            const result = new RegExp('id="(.+?)"').exec(item)
+            if (result && result[1]) {
+              modelXmlTemp = modelXmlTemp.replace('bpmnElement="' + result[1] + '"', 'bpmnElement="' + result[1] + '" isMarkerVisible="true"')
+            }
+          })
+        }
+        bpmnViewer.importXML(modelXmlTemp, (err) => {
+          if (err) {
+            console.error(err, 1111)
+          } else {
+            this.importXmlSuccess()
+          }
+        })
+      },
+
+      importXmlSuccess() {
+        // 使流程图自适应屏幕
+        let canvas = bpmnViewer.get('canvas')
+        canvas.zoom('fit-viewport', 'auto')
+        //设置高亮线和高亮节点,需要配合style中的css样式一起使用，否则没有颜色
+        this.setViewerStyle(canvas)
+        //给任务节点加聚焦和离焦事件
+        this.bindEvents()
+      },
+
+      setViewerStyle(canvas) {
+        //已完成节点高亮
+        let executedLightNode = this.executedLightNode
+        if (executedLightNode && executedLightNode.length > 0) {
+          executedLightNode.forEach(item => {
+            canvas.addMarker(item, 'highlight-executed')
+          })
+        }
+
+        //顺序线高亮
+        let highlightLines = this.highlightLine
+        if (highlightLines && highlightLines.length > 0) {
+          highlightLines.forEach(item => {
+            canvas.addMarker(item, 'highlight-line')
+          })
+        }
+
+        //正在执行节点高亮
+        let activeLightNode = this.activeLightNode
+        if (activeLightNode && activeLightNode.length > 0) {
+          activeLightNode.forEach((item,index) => {
+            canvas.addMarker(item, 'highlight')
+          })
+          document.querySelectorAll('.highlight').forEach((item,index)=>{
+            item.querySelector('.djs-visual rect').setAttribute('stroke-dasharray', '4,4')
+          })
+        }
+      },
+
+      // 以下代码为：为节点注册鼠标悬浮事件
+      bindEvents() {
+        let eventBus = bpmnViewer.get('eventBus')
+        eventBus.on('element.hover', (e) => {
+          if (e.element.type === 'bpmn:UserTask') {
+            if (this.detailInfo[e.element.id] == null) {
+              let params = {
+                instanceId: this.instanceId,
+                activityId: e.element.id
+              }
+              axios.post("/activiti/flow/event", params).then(res => {
+                this.detailInfo = res.data.map;
+              })
+            }
+          }
+        })
+        eventBus.on('element.out', (e) => {
+          if (e.element.type === 'bpmn:UserTask') {
+            this.detailInfo = []
+          }
+        })
+      },
+
+      processZoomIn(zoomStep = 0.1) {
+        let newZoom = Math.floor(this.defaultZoom * 100 + zoomStep * 100) / 100
+        if (newZoom > 4) {
+          throw new Error('[Process Designer Warn ]: The zoom ratio cannot be greater than 4')
+        }
+        this.defaultZoom = newZoom
+        bpmnViewer.get('canvas').zoom(this.defaultZoom)
+      },
+      processZoomOut(zoomStep = 0.1) {
+        let newZoom = Math.floor(this.defaultZoom * 100 - zoomStep * 100) / 100
+        if (newZoom < 0.2) {
+          throw new Error('[Process Designer Warn ]: The zoom ratio cannot be less than 0.2')
+        }
+        this.defaultZoom = newZoom
+        bpmnViewer.get('canvas').zoom(this.defaultZoom)
+      },
+      processReZoom() {
+        this.defaultZoom = 1
+        bpmnViewer.get('canvas').zoom('fit-viewport', 'auto')
+      }
+    }
+  })
+</script>
+</html>

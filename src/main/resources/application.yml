@@ -8,7 +8,9 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
-      url: jdbc:mysql://localhost:3306/activiti_5?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false&serverTimezone=UTC&nullCatalogMeansCurrent=true
+      # 5.22数据库
+      # url: jdbc:mysql://localhost:3306/activiti_5?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false&serverTimezone=UTC&nullCatalogMeansCurrent=true
+      url: jdbc:mysql://localhost:3306/activiti?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false&serverTimezone=UTC&nullCatalogMeansCurrent=true
       username: root
       password: 123456
       driver-class-name: com.mysql.cj.jdbc.Driver

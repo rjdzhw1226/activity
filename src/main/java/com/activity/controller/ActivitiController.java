@@ -1,8 +1,12 @@
 package com.activity.controller;
 
+import cn.hutool.core.io.IoUtil;
 import com.activity.pojo.ActMid;
 import com.activity.pojo.Evection;
+import com.activity.pojo.Proc;
+import com.activity.pojo.ProcessHighlightEntity;
 import com.activity.request.ProcessStart;
+import com.activity.response.ProcessEnd;
 import com.activity.service.ActivitiAutoService;
 import com.activity.service.ActivitiService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,33 +14,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.activiti.bpmn.converter.BpmnXMLConverter;
 import org.activiti.bpmn.model.BpmnModel;
+import org.activiti.bpmn.model.FlowNode;
 import org.activiti.bpmn.model.Process;
+import org.activiti.bpmn.model.SequenceFlow;
 import org.activiti.editor.constants.ModelDataJsonConstants;
 import org.activiti.editor.language.json.converter.BpmnJsonConverter;
 import org.activiti.engine.*;
 import org.activiti.engine.history.HistoricActivityInstance;
 import org.activiti.engine.history.HistoricProcessInstance;
 import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
-import org.activiti.engine.repository.Deployment;
-import org.activiti.engine.repository.Model;
-import org.activiti.engine.repository.ModelQuery;
+import org.activiti.engine.repository.*;
 import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
 
 import org.activiti.image.ProcessDiagramGenerator;
 import org.activiti.image.impl.DefaultProcessDiagramGenerator;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/activiti")
@@ -62,13 +67,13 @@ public class ActivitiController {
             Model modelData = repositoryService.newModel();
 
             ObjectNode modelObjectNode = objectMapper.createObjectNode();
-            modelObjectNode.put(ModelDataJsonConstants.MODEL_NAME, "hello1111");
+            modelObjectNode.put(ModelDataJsonConstants.MODEL_NAME, "process_act");
             modelObjectNode.put(ModelDataJsonConstants.MODEL_REVISION, 1);
-            String description = "hello1111";
+            String description = "process";
             modelObjectNode.put(ModelDataJsonConstants.MODEL_DESCRIPTION, description);
             modelData.setMetaInfo(modelObjectNode.toString());
-            modelData.setName("hello1111");
-            modelData.setKey("12313123");
+            modelData.setName("hello");
+            modelData.setKey("Key：" + UUID.randomUUID());
 
             //保存模型
             repositoryService.saveModel(modelData);
@@ -100,6 +105,18 @@ public class ActivitiController {
 //      ModelQuery modelQuery = repositoryService.createModelQuery().notDeployed().latestVersion().orderByLastUpdateTime().desc();
       ModelQuery modelQuery = repositoryService.createModelQuery().orderByCreateTime().desc();
       return modelQuery.list();
+    }
+
+    @RequestMapping("/queryProcess/{def}/{defKey}")
+    @ResponseBody
+    public List<ProcessDefinition> queryAllProcesses(@PathVariable("def") String def, @PathVariable("defKey") String defKey){
+        ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery()
+                .orderByProcessDefinitionId()
+                .orderByProcessDefinitionKey().desc()
+                .orderByProcessDefinitionVersion().desc();
+        query.processDefinitionNameLike("%" + def + "%");
+        query.processDefinitionKeyLike("%" + defKey + "%");
+        return query.list();
     }
 
     @Resource
@@ -255,5 +272,171 @@ public class ActivitiController {
       .taskAssignee("jack")
       .singleResult();
   }
+
+    @RequestMapping("/completeTask/{id}")
+    public void completeTask(@PathVariable("id") String id){
+        taskService.complete(id);
+    }
+
+    @Resource
+    private ActivitiService activitiService;
+
+    @RequestMapping("/flow/event")
+    @ResponseBody
+    public ProcessEnd queryCurEvent(@RequestBody Proc proc){
+        return activitiService.queryCurEvent(proc.getInstanceId(), proc.getActivityId());
+    }
+
+    @Resource
+    private HistoryService historyService;
+
+    private static Map<String, String> BPMN_XML_MAP = new ConcurrentHashMap<>();
+
+
+    @RequestMapping("/flow/definite")
+    @ResponseBody
+    public ProcessHighlightEntity getActivitiProcessHighlight(@RequestBody Proc proc) {
+        String procDefId = proc.getProcDefId();
+        String instanceId = proc.getInstanceId();
+        ProcessDefinition processDefinition = getProcessDefinition(procDefId, instanceId);
+        procDefId = processDefinition.getId();
+        BpmnModel bpmnModel = getBpmnModel(procDefId);
+        List<HistoricActivityInstance> histActInstances = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(instanceId).orderByHistoricActivityInstanceId().asc().list();
+        ProcessHighlightEntity highlightEntity = getHighLightedData(bpmnModel.getMainProcess(), histActInstances);
+        highlightEntity.setModelName(processDefinition.getName());
+        // Map缓存，提高获取流程文件速度
+        if (BPMN_XML_MAP.containsKey(procDefId)) {
+            highlightEntity.setModelXml(BPMN_XML_MAP.get(procDefId));
+        } else {
+            InputStream bpmnStream = repositoryService.getResourceAsStream(processDefinition.getDeploymentId(), processDefinition.getResourceName());
+            try (Reader reader = new InputStreamReader(bpmnStream, StandardCharsets.UTF_8)) {
+                String xmlString = IoUtil.read(reader);
+                highlightEntity.setModelXml(xmlString);
+                BPMN_XML_MAP.put(procDefId, xmlString);
+            } catch (IOException e) {
+                System.out.printf("[获取流程数据] 失败，{}", e.getMessage());
+                throw new RuntimeException("获取流程数据失败，请稍后重试");
+            }
+        }
+        return highlightEntity;
+    }
+
+    public ProcessDefinition getProcessDefinition(String procDefId, String instanceId) {
+        if (StringUtils.isBlank(procDefId)) {
+            if (StringUtils.isBlank(instanceId)) {
+                throw new RuntimeException("流程实例id，流程定义id 两者不能都为空");
+            }
+            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+                    .processInstanceId(instanceId)
+                    .singleResult();
+            if (processInstance == null) {
+                HistoricProcessInstance histProcInst = historyService.createHistoricProcessInstanceQuery()
+                        .processInstanceId(instanceId)
+                        .singleResult();
+                if (histProcInst == null) {
+                    throw new RuntimeException("查询失败，请检查传入的 instanceId 是否正确");
+                }
+                procDefId = histProcInst.getProcessDefinitionId();
+            } else {
+                procDefId = processInstance.getProcessDefinitionId();
+            }
+        }
+        try {
+            return repositoryService.getProcessDefinition(procDefId);
+        } catch (ActivitiObjectNotFoundException e) {
+            throw new RuntimeException("该流程属于之前流程，已删除");
+        }
+    }
+
+    public BpmnModel getBpmnModel(String procDefId) {
+        try {
+            return repositoryService.getBpmnModel(procDefId);
+        } catch (ActivitiObjectNotFoundException e) {
+            throw new RuntimeException("流程定义数据不存在");
+        }
+    }
+
+    private ProcessHighlightEntity getHighLightedData(Process process,
+                                                      List<HistoricActivityInstance> historicActInstances) {
+        ProcessHighlightEntity entity = new ProcessHighlightEntity();
+        // 已执行的节点id
+        Set<String> executedActivityIds = new HashSet<>();
+        // 正在执行的节点id
+        Set<String> activeActivityIds = new HashSet<>();
+        // 高亮流程已发生流转的线id集合
+        Set<String> highLightedFlowIds = new HashSet<>();
+        // 全部活动节点
+        List<FlowNode> historicActivityNodes = new ArrayList<>();
+        // 已完成的历史活动节点
+        List<HistoricActivityInstance> finishedActivityInstances = new ArrayList<>();
+
+        for (HistoricActivityInstance historicActivityInstance : historicActInstances) {
+            FlowNode flowNode = (FlowNode) process.getFlowElement(historicActivityInstance.getActivityId(), true);
+            historicActivityNodes.add(flowNode);
+            if (historicActivityInstance.getEndTime() != null) {
+                finishedActivityInstances.add(historicActivityInstance);
+                executedActivityIds.add(historicActivityInstance.getActivityId());
+            } else {
+                activeActivityIds.add(historicActivityInstance.getActivityId());
+            }
+        }
+
+        FlowNode currentFlowNode = null;
+        FlowNode targetFlowNode = null;
+        // 遍历已完成的活动实例，从每个实例的outgoingFlows中找到已执行的
+        for (HistoricActivityInstance currentActivityInstance : finishedActivityInstances) {
+            // 获得当前活动对应的节点信息及outgoingFlows信息
+            currentFlowNode = (FlowNode) process.getFlowElement(currentActivityInstance.getActivityId(), true);
+            List<SequenceFlow> sequenceFlows = currentFlowNode.getOutgoingFlows();
+
+            /**
+             * 遍历outgoingFlows并找到已已流转的 满足如下条件认为已已流转：
+             * 1.当前节点是并行网关或兼容网关，则通过outgoingFlows能够在历史活动中找到的全部节点均为已流转
+             * 2.当前节点是以上两种类型之外的，通过outgoingFlows查找到的时间最早的流转节点视为有效流转
+             */
+            if ("parallelGateway".equals(currentActivityInstance.getActivityType()) || "inclusiveGateway".equals(currentActivityInstance.getActivityType())) {
+                // 遍历历史活动节点，找到匹配流程目标节点的
+                for (SequenceFlow sequenceFlow : sequenceFlows) {
+                    targetFlowNode = (FlowNode) process.getFlowElement(sequenceFlow.getTargetRef(), true);
+                    if (historicActivityNodes.contains(targetFlowNode)) {
+                        highLightedFlowIds.add(sequenceFlow.getId());
+                    }
+                }
+            } else {
+                List<Map<String, Object>> tempMapList = new ArrayList<>();
+                for (SequenceFlow sequenceFlow : sequenceFlows) {
+                    for (HistoricActivityInstance historicActivityInstance : historicActInstances) {
+                        if (historicActivityInstance.getActivityId().equals(sequenceFlow.getTargetRef())) {
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("highLightedFlowId", sequenceFlow.getId());
+                            map.put("highLightedFlowStartTime", historicActivityInstance.getStartTime().getTime());
+                            tempMapList.add(map);
+                        }
+                    }
+                }
+
+                if (!CollectionUtils.isEmpty(tempMapList)) {
+                    // 遍历匹配的集合，取得开始时间最早的一个
+                    long earliestStamp = 0L;
+                    String highLightedFlowId = null;
+                    for (Map<String, Object> map : tempMapList) {
+                        long highLightedFlowStartTime = Long.parseLong(map.get("highLightedFlowStartTime").toString());
+                        if (earliestStamp == 0 || earliestStamp >= highLightedFlowStartTime) {
+                            highLightedFlowId = map.get("highLightedFlowId").toString();
+                            earliestStamp = highLightedFlowStartTime;
+                        }
+                    }
+                    highLightedFlowIds.add(highLightedFlowId);
+                }
+            }
+        }
+
+        entity.setActiveActivityIds(activeActivityIds);
+        entity.setExecutedActivityIds(executedActivityIds);
+        entity.setHighlightedFlowIds(highLightedFlowIds);
+
+        return entity;
+    }
 
 }
