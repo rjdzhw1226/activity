@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="plugins/element-ui/index.css">
+  <script src="plugins/vue/vue.js"></script>
+  <script src="plugins/element-ui/index.js"></script>
+  <script src="plugins/axios/axios.min.js"></script>
+  <title>流程定义目录</title>
+  <style>
+    html,body,#app,.el-container {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    }
+    .el-container {
+      border: 1px solid #eee;
+    }
+    .el-aside {
+      background-color: rgb(238, 241, 246);
+    }
+    .el-main {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <el-container>
+    <el-aside>
+      <el-tree :data="menuList" :props="defaultProps" @node-click="handleNodeClick"></el-tree>
+    </el-aside>
+    <el-main>
+      <el-form :inline="true" :model="queryForm" class="demo-form-inline" style="margin-top: 10px">
+        <el-form-item label="流程模型名">
+          <el-input v-model="queryForm.definitionName" placeholder="流程模型名" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="流程模型ID/KEY">
+          <el-input v-model="queryForm.definitionKey" placeholder="流程模型ID" clearable></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-row :gutter="10" class="mb8">
+        <el-col :span="1.5">
+          <el-button type="primary" @click="handleAdd">新增</el-button>
+        </el-col>
+      </el-row>
+
+      <el-table :data="TableData"
+                stripe
+                style="width: 100%"
+                @selection-change="handleSelectChange">
+        <el-table-column type="selection" align="center" width="auto"></el-table-column>
+        <el-table-column prop="id" label="流程模型ID" align="center" width="auto"></el-table-column>
+        <el-table-column prop="key" label="流程key" align="center" width="auto"></el-table-column>
+        <el-table-column prop="name" label="流程模型名" align="center" width="auto"></el-table-column>
+        <el-table-column prop="editorSourceValueId" label="源文件ID" align="center" width="auto"></el-table-column>
+        <el-table-column prop="persistentState.deploymentId" label="部署" width="auto" align="center"></el-table-column>
+        <el-table-column label="操作" width="auto" align="center">
+          <template slot-scope="scope">
+            <el-button
+              type="text"
+              size="small"
+              @click="edit(scope.row.id)">
+              编辑模型
+            </el-button>
+            <el-button
+              type="text"
+              size="small"
+              class="greenBug"
+              @click="deleteModel(scope.row.id)">
+              删除模板
+            </el-button>
+            <el-button
+              type="text"
+              size="small"
+              @click="exportModel(scope.row)">
+              导出模板
+            </el-button>
+            <el-button
+              type="text"
+              size="small"
+              @click="findImg(scope.row.id)">
+              查看模板
+            </el-button>
+            <el-button
+              type="text"
+              size="small"
+              @click="deploy(scope.row.id)">
+              部署流程
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-main>
+  </el-container>
+  <el-dialog
+    title="创建模型"
+    :visible.sync="dialogVisible"
+    width="50%"
+    :before-close="handleClose">
+    <el-form ref="form" :model="modelForm" label-width="auto">
+      <el-form-item label="模型名称">
+        <el-input v-model="modelForm.name"></el-input>
+      </el-form-item>
+      <el-form-item label="模型描述">
+        <el-input v-model="modelForm.description"></el-input>
+      </el-form-item>
+      <el-form-item label="模型KEY">
+        <el-input v-model="modelForm.key"></el-input>
+      </el-form-item>
+      <el-form-item label="模型分类">
+        <el-select v-model="modelForm.region" placeholder="请选择分类" ref="select">
+          <el-option hidden key="id" :value="modelForm.region" :label="modelForm.selectId"></el-option>
+          <el-tree :data="menuList" :props="defaultProps" @node-click="handleSubNodeClick"></el-tree>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="onSubmit">立即创建</el-button>
+        <el-button type="info" @click="onCancel">取消</el-button>
+      </el-form-item>
+    </el-form>
+  </el-dialog>
+</div>
+</body>
+<script>
+  function httpPost(URL, PARAMS) {
+    var temp = document.createElement("form");
+    temp.action = URL;
+    temp.method = "post";
+    temp.style.display = "none";
+
+    for (var x in PARAMS) {
+      var opt = document.createElement("textarea");
+      opt.name = x;
+      opt.value = PARAMS[x];
+      temp.appendChild(opt);
+    }
+
+    document.body.appendChild(temp);
+    temp.submit();
+
+    return temp;
+  }
+</script>
+<script>
+  new Vue({
+    el: '#app',
+    data() {
+      return {
+        menuSign:'', //分类查询标志
+        dialogVisible: false, //对话框弹出标志
+        queryForm:{}, //查询基本数据
+        modelForm:{}, //模型构建基本数据
+        menuList: [], //分类菜单数据
+        TableData:[], //模型表格数据
+        selectList:[], //选择集合
+        defaultProps: {
+          children: 'children',
+          label: 'label'
+        }
+      };
+    },
+    created() {
+      this.queryMenu();
+      this.queryPage();
+    },
+    methods: {
+      queryMenu() {
+        axios.get("/activiti/menu-tree").then((res) => {
+          this.menuList = res.data.data;
+        })
+      },
+      queryPage(){
+        let category = this.menuSign;
+        axios.get("/activiti/query?category=" + category + "").then((res)=>{
+          this.TableData = res.data;
+        })
+      },
+      handleQuery(){
+
+      },
+      handleNodeClick(data) {
+        this.menuSign = data.label + ":" + data.id;
+        this.queryPage();
+      },
+      handleSelectChange(val){
+        this.selectList = val;
+      },
+      handleSubNodeClick(data){
+        this.modelForm.region = data.label;
+        this.modelForm.selectId = data.id;
+        this.$refs.select.blur();
+      },
+      handleClose(done) {
+        this.$confirm('确认关闭？')
+          .then(_ => {
+            this.modelForm = {};
+            done();
+          })
+          .catch(_ => {
+            this.modelForm = {};
+          });
+      },
+      handleAdd(){
+        this.dialogVisible = true;
+      },
+      onSubmit(){
+        let params = {
+          name: this.modelForm.name,
+          description: this.modelForm.description,
+          key: this.modelForm.key,
+          region: this.modelForm.region,
+          selectId: this.modelForm.selectId
+        };
+        httpPost("/activiti/create", params);
+        this.dialogVisible = false;
+        this.modelForm = {};
+      },
+      onCancel(){
+        this.dialogVisible = false;
+        this.modelForm = {};
+      },
+      edit(id){
+        window.location.href = "/activiti/edit/" + id;
+      },
+      deleteModel(id){
+        axios.get("/activiti/close/"+ id).then((res)=>{
+          this.$message({
+            type: 'info',
+            message: res.data
+          });
+        })
+        this.queryModel()
+      },
+      exportModel(node){
+        axios.get("/activiti/export/"+node.id+"",{responseType:'blob'}).then((response)=>{
+          let blob = new Blob([response.data]);
+          let filename = node.name + ".bpmn";
+          const f = document.createElement('a');
+          f.download = filename;
+          f.style.display = 'none';
+          f.href = URL.createObjectURL(blob);
+          document.body.appendChild(f);
+          f.click();
+          URL.revokeObjectURL(f.href);
+          document.body.removeChild(f);
+        })
+      },
+      findImg(id){
+        window.location.href = "/activiti/showmodelpicture/" + id;
+      },
+      deploy(id){
+        this.$confirm('确认部署？')
+          .then(_ => {
+            axios.get("/activiti/deploy/"+ id).then((res)=>{
+              this.$message({
+                type: 'info',
+                message: res.data
+              });
+            })
+          }).catch(_ => {});
+      },
+    }
+  })
+</script>
+</html>

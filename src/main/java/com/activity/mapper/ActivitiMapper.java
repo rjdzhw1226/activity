@@ -1,9 +1,14 @@
 package com.activity.mapper;
 
+import com.activity.pojo.Menu;
 import com.activity.pojo.ProcessEvent;
+import com.activity.pojo.menuQ;
+import com.activity.pojo.user;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 
 @Mapper
@@ -19,4 +24,16 @@ public interface ActivitiMapper {
           "hc.TIME_ as endTime,IF(ht.END_TIME_ IS NULL, '审批中', '已审批') as approvalStatus " +
           "FROM act_hi_taskinst ht LEFT JOIN act_hi_comment hc ON ht.ID_ = hc.TASK_ID_ WHERE ht.PROC_INST_ID_ = #{instanceId} AND ht.TASK_DEF_KEY_ = #{activityId} ORDER BY(ht.ID_ + 0) DESC")
   public ProcessEvent queryCurEvent(String instanceId, String activityId);
+
+  @Select("select * from menu where parent_id in (select id from menu where parent_id = #{i})")
+  public List<menuQ> queryMenu(int i);
+
+  @Select("select * from menu where 1 = 1")
+  public List<menuQ> queryMenuAll();
+
+  @Select("SELECT id, label, parent_id as parentId FROM menu")
+  List<Menu> getAllMenus();
+
+  @Select("select name, userId from user where 1 = 1")
+  List<user> queryUsers();
 }

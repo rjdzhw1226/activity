@@ -15,11 +15,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/META-INF/resources/");
     }
 
-  @Override
-  public void addViewControllers(ViewControllerRegistry registry) {
-    //设置访问路径为 “/” 跳转到指定页面
-    registry.addViewController("/").setViewName("forward:/index.html");
-    //设置为最高优先级
-    registry.setOrder(Ordered.HIGHEST_PRECEDENCE);
-  }
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        //设置访问路径为 “/” 跳转到指定页面
+//    registry.addViewController("/").setViewName("forward:/index.html");
+        registry.addViewController("/").setViewName("forward:/Main.html");
+        //设置为最高优先级
+        registry.setOrder(Ordered.HIGHEST_PRECEDENCE);
+    }
 }

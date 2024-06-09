@@ -16,12 +16,7 @@
   <el-table
     :data="tableDataModel"
     stripe
-    style="width: 100%"
-    @selection-change="handleSelectChange">
-    <el-table-column
-      type="selection"
-      width="auto">
-    </el-table-column>
+    style="width: 100%">
     <el-table-column
       prop="id"
       label="模型id"
@@ -72,13 +67,13 @@
         <el-button
           type="text"
           size="small"
-          @click="exportModel(scope.row.id)">
+          @click="exportModel(scope.row)">
           导出模板
         </el-button>
         <el-button
           type="text"
           size="small"
-          @click="findImg(scope.row.id)">
+          @click="findImg(scope.row)">
           查看模板
         </el-button>
       </template>
@@ -91,11 +86,9 @@
     el: '#app',
     data: {
       tableDataModel: [],
-      selection: [],
     },
     created() {
       this.queryModel()
-      this.queryFetch()
     },
     mounted() {
 
@@ -109,25 +102,44 @@
       edit(id){
         window.location.href = "/activiti/edit/" + id;
       },
-      deleteModel(){
-
-      },
-      exportModel(){
-
-      },
-      findImg(id){
-        window.location.href = "/activiti/showmodelpicture/" + id;
-      },
-      handleSelectChange(val){
-        this.selection = val
-      },
-      queryFetch(){
-        fetch('/activiti/query',{
-          method: 'GET'
-        }).then(response=>{
-          console.log('响应',response)
+      deleteModel(id){
+        axios.get("/activiti/close/"+ id).then((res)=>{
+          this.$message({
+            type: 'info',
+            message: res.data
+          });
         })
-      }
+        this.queryModel()
+      },
+      exportModel(node){
+        axios.get("/activiti/export/"+node.id+"",{responseType:'blob'}).then((response)=>{
+          let blob = new Blob([response.data]);
+          let filename = node.name + ".bpmn";
+          const f = document.createElement('a');
+          f.download = filename;
+          f.style.display = 'none';
+          f.href = URL.createObjectURL(blob);
+          document.body.appendChild(f);
+          f.click();
+          URL.revokeObjectURL(f.href);
+          document.body.removeChild(f);
+        })
+      },
+      findImg(node){
+        // window.location.href = "/activiti/showmodelpicture/" + id;
+        axios.get("/activiti/showmodelpicture/"+node.id+"",{responseType:'blob'}).then((response)=>{
+          let blob = new Blob([response.data]);
+          let filename = node.name + ".png";
+          const f = document.createElement('a');
+          f.download = filename;
+          f.style.display = 'none';
+          f.href = URL.createObjectURL(blob);
+          document.body.appendChild(f);
+          f.click();
+          URL.revokeObjectURL(f.href);
+          document.body.removeChild(f);
+        })
+      },
     },
 
   })

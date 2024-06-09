@@ -4,17 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
-  <script src="dist/bpmn-modeler.development.js"></script>
-  <link rel="stylesheet" type="text/css" href="dist/assets/diagram-js.css"/>
-  <link rel="stylesheet" type="text/css" href="dist/assets/bpmn-font/css/bpmn.css"/>
-  <link rel="stylesheet" type="text/css" href="dist/assets/bpmn-font/css/bpmn-codes.css"/>
-  <link rel="stylesheet" type="text/css" href="dist/assets/bpmn-font/css/bpmn-embedded.css"/>
-  <link rel="stylesheet" type="text/css" href="panel_dist/bpmn-js-properties-panel.css"/>
-  <link rel="stylesheet" href="plugins/element-ui/index.css">
-  <script src="plugins/vue/vue.js"></script>
-  <script src="plugins/element-ui/index.js"></script>
-  <script src="plugins/axios/axios.min.js"></script>
-  <script src="diagram-viewer/js/jquery/jquery.js" type="text/javascript" charset="utf-8"></script>
+  <script src="../dist/bpmn-modeler.development.js"></script>
+  <link rel="stylesheet" type="text/css" href="../dist/assets/diagram-js.css"/>
+  <link rel="stylesheet" type="text/css" href="../dist/assets/bpmn-font/css/bpmn.css"/>
+  <link rel="stylesheet" type="text/css" href="../dist/assets/bpmn-font/css/bpmn-codes.css"/>
+  <link rel="stylesheet" type="text/css" href="../dist/assets/bpmn-font/css/bpmn-embedded.css"/>
+  <link rel="stylesheet" type="text/css" href="../panel_dist/bpmn-js-properties-panel.css"/>
+  <link rel="stylesheet" href="../plugins/element-ui/index.css">
+  <script src="../plugins/vue/vue.js"></script>
+  <script src="../plugins/element-ui/index.js"></script>
+  <script src="../plugins/axios/axios.min.js"></script>
+  <script src="../diagram-viewer/js/jquery/jquery.js" type="text/javascript" charset="utf-8"></script>
   <title>跟踪</title>
   <style lang="scss">
     .flowMsgPopover {
@@ -66,54 +66,64 @@
   </style>
 </head>
 <body>
-<div id="app">
-  <div>
-    <div class="bpmn-viewer-container">
-      <div
-        style="width:100%;height:20px;position: absolute; left: 20px; top: 10px; color: #000000D9;font-size: 16px;font-weight: 500">
-        {{title}}
-      </div>
-      <div style="position: absolute; left: 10px; top: 40px;z-index: 999">
-        <el-button-group key="scale-control">
-          <el-button :size="headerButtonSize" @click="back">返回</el-button>
-          <el-tooltip effect="light" content="缩小视图">
-            <el-button :size="headerButtonSize" :disabled="defaultZoom < 0.2" icon="el-icon-zoom-out"
-                       @click="processZoomOut()"/>
-          </el-tooltip>
-          <el-button :size="headerButtonSize">{{ Math.floor(this.defaultZoom * 10 * 10) + '%' }}</el-button>
-          <el-tooltip effect="light" content="放大视图">
-            <el-button :size="headerButtonSize" :disabled="defaultZoom > 4" icon="el-icon-zoom-in"
-                       @click="processZoomIn()"/>
-          </el-tooltip>
-          <el-tooltip effect="light" content="重置视图并居中">
-            <el-button :size="headerButtonSize" icon="el-icon-c-scale-to-original" @click="processReZoom()"/>
-          </el-tooltip>
-        </el-button-group>
-      </div>
+ <div id="app">
+   <div>
+     <div class="bpmn-viewer-container">
+       <div
+         style="width:100%;height:20px;position: absolute; left: 20px; top: 10px; color: #000000D9;font-size: 16px;font-weight: 500">
+         {{title}}
+       </div>
+       <div style="position: absolute; left: 10px; top: 40px;z-index: 999">
+         <el-button-group key="scale-control">
+           <el-tooltip effect="light" content="缩小视图">
+             <el-button :size="headerButtonSize" :disabled="defaultZoom < 0.2" icon="el-icon-zoom-out"
+                        @click="processZoomOut()"/>
+           </el-tooltip>
+           <el-button :size="headerButtonSize">{{ Math.floor(this.defaultZoom * 10 * 10) + '%' }}</el-button>
+           <el-tooltip effect="light" content="放大视图">
+             <el-button :size="headerButtonSize" :disabled="defaultZoom > 4" icon="el-icon-zoom-in"
+                        @click="processZoomIn()"/>
+           </el-tooltip>
+           <el-tooltip effect="light" content="重置视图并居中">
+             <el-button :size="headerButtonSize" icon="el-icon-c-scale-to-original" @click="processReZoom()"/>
+           </el-tooltip>
+         </el-button-group>
+       </div>
 
-      <div id="bpmnCanvas" style="width:100%;height:500px;margin: 0 auto;"></div>
-      <div v-for="item in detailInfo" :key="item.activityId" style="width: 90%;margin: 0 auto;border-bottom: 1px dashed #333;">
-        <el-row>
-          <el-col :span="12">
-            <p>节点名称：{{item.activityName}}</p>
-            <p>审批人：{{item.assignee}}</p>
-            <p>审批状态：{{item.approvalStatus}}</p>
-          </el-col>
-          <el-col :span="12">
-            <p>审批结果：{{item.result}}</p>
-            <p>审批意见：{{item.comment}}</p>
-            <p>审批时间：{{item.endTime}}</p>
-          </el-col>
-        </el-row>
-      </div>
-    </div>
-  </div>
-</div>
+       <div id="bpmnCanvas" style="width:100%;height:500px;margin: 0 auto;"></div>
+       <div v-for="item in detailInfo" :key="item.activityId" style="width: 90%;margin: 0 auto;border-bottom: 1px dashed #333;">
+         <el-row>
+           <el-col :span="12">
+             <p>节点名称：{{item.activityName}}</p>
+             <p>审批人：{{item.assignee}}</p>
+             <p>审批状态：{{item.approvalStatus}}</p>
+           </el-col>
+           <el-col :span="12">
+             <p>审批结果：{{item.result}}</p>
+             <p>审批意见：{{item.comment}}</p>
+             <p>审批时间：{{item.endTime}}</p>
+           </el-col>
+         </el-row>
+       </div>
+     </div>
+   </div>
+ </div>
 </body>
 <script>
   let processDefinitionId = null;
   let processInstanceId = null;
   let bpmnViewer = null;
+  $(document).ready(function(){
+    var query_string = {};
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      query_string[pair[0]] = pair[1];
+    }
+    processDefinitionId = query_string["processDefinitionId"];
+    processInstanceId = query_string["processInstanceId"];
+  });
   new Vue({
     el: '#app',
     data: {
@@ -140,23 +150,12 @@
     },
     name: 'reviewRuningFlow',
     created() {
-      var query_string = {};
-      var query = window.location.search.substring(1);
-      var vars = query.split("&");
-      for (var i=0;i<vars.length;i++) {
-        var pair = vars[i].split("=");
-        query_string[pair[0]] = pair[1];
-      }
-      processDefinitionId = query_string["processDefinitionId"];
-      processInstanceId = query_string["processInstanceId"];
+
     },
     mounted() {
-      this.initPage(processInstanceId, processDefinitionId);
+      this.initPage(processInstanceId, processDefinitionId)
     },
     methods: {
-      back(){
-          history.back();
-      },
       initPage(instanceId, procDefId) {
         bpmnViewer = new BpmnJS({
           container: '#bpmnCanvas',

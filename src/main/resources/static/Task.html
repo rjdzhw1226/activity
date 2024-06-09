@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="plugins/element-ui/index.css">
+  <script src="plugins/vue/vue.js"></script>
+  <script src="plugins/element-ui/index.js"></script>
+  <script src="plugins/axios/axios.min.js"></script>
+  <title>流程任务目录</title>
+</head>
+<body>
+<div id="app">
+  <el-table
+    :data="tableDataModel"
+    stripe
+    style="width: 100%">
+    <el-table-column
+      prop="id"
+      align="center"
+      label="活动ID"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="name"
+      align="center"
+      label="部署流程名称"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="assignee"
+      align="center"
+      label="人员"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="processInstanceId"
+      align="center"
+      label="活动实例ID"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="processDefinitionId"
+      align="center"
+      label="活动定义ID"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="createTime"
+      align="center"
+      label="创建时间"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      label="操作"
+      width="auto"
+      align="center"
+    >
+      <template slot-scope="scope">
+        <el-button
+          type="text"
+          size="small"
+          @click="flow(scope.row)">
+          跟踪流程
+        </el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+</div>
+</body>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      tableDataModel: [],
+    },
+    created() {
+      this.queryPage();
+    },
+    methods: {
+      queryPage(){
+        axios.get("/activiti/queryTask").then((res)=>{
+          this.tableDataModel = res.data;
+        })
+      },
+      flow(node){
+        window.location.href="/flow.html?processDefinitionId="+node.processDefinitionId+"&processInstanceId="+node.processInstanceId+"";
+      },
+    },
+
+  })
+</script>
+</html>
+
+

@@ -1,10 +1,7 @@
 package com.activity.controller;
 
 import cn.hutool.core.io.IoUtil;
-import com.activity.pojo.ActMid;
-import com.activity.pojo.Evection;
-import com.activity.pojo.Proc;
-import com.activity.pojo.ProcessHighlightEntity;
+import com.activity.pojo.*;
 import com.activity.request.ProcessStart;
 import com.activity.response.ProcessEnd;
 import com.activity.service.ActivitiAutoService;
@@ -51,10 +48,9 @@ public class ActivitiController {
      * 创建模型
      */
     @RequestMapping("/create")
-    public void create(HttpServletRequest request, HttpServletResponse response) {
+    public void create(@RequestParam String name, @RequestParam String description, @RequestParam String key, @RequestParam String region, @RequestParam String selectId, HttpServletRequest request, HttpServletResponse response) {
         try {
             ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
-
             RepositoryService repositoryService = processEngine.getRepositoryService();
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -64,21 +60,21 @@ public class ActivitiController {
             ObjectNode stencilSetNode = objectMapper.createObjectNode();
             stencilSetNode.put("namespace", "http://b3mn.org/stencilset/bpmn2.0#");
             editorNode.put("stencilset", stencilSetNode);
-            Model modelData = repositoryService.newModel();
 
+            Model modelData = repositoryService.newModel();
             ObjectNode modelObjectNode = objectMapper.createObjectNode();
-            modelObjectNode.put(ModelDataJsonConstants.MODEL_NAME, "process_act");
+
+            modelObjectNode.put(ModelDataJsonConstants.MODEL_NAME, "Model：" + name);
             modelObjectNode.put(ModelDataJsonConstants.MODEL_REVISION, 1);
-            String description = "process";
             modelObjectNode.put(ModelDataJsonConstants.MODEL_DESCRIPTION, description);
             modelData.setMetaInfo(modelObjectNode.toString());
-            modelData.setName("hello");
-            modelData.setKey("Key：" + UUID.randomUUID());
+            modelData.setName(name);
+            modelData.setKey(key);
+            modelData.setCategory(region + ":" + selectId);
 
             //保存模型
             repositoryService.saveModel(modelData);
             repositoryService.addModelEditorSource(modelData.getId(), editorNode.toString().getBytes("utf-8"));
-//            System.out.println(request.getContextPath() + "/modeler.html?modelId=" + modelData.getId());
             response.sendRedirect(request.getContextPath() + "/modeler.html?modelId=" + modelData.getId());
         } catch (Exception e) {
             System.out.println("创建模型失败：");
@@ -437,6 +433,30 @@ public class ActivitiController {
         entity.setHighlightedFlowIds(highLightedFlowIds);
 
         return entity;
+    }
+
+    @GetMapping("/menu")
+    @ResponseBody
+    public Map<String, List<menuQ>> queryMenu(){
+        return activitiService.queryMenu(0);
+    }
+
+    @GetMapping("/menu-tree")
+    @ResponseBody
+    public Map<String, List<Menu>>  getMenuTree() {
+        List<Menu> menuTree = activitiService.getMenuTree();
+        Map<String, List<Menu>> map = new HashMap<>();
+        map.put("data", menuTree);
+        return map;
+    }
+
+    @GetMapping("/user")
+    @ResponseBody
+    public Map<String, List<user>> getUser(){
+        List<user> users = activitiService.queryUsers();
+        Map<String, List<user>> map = new HashMap<>();
+        map.put("rows", users);
+        return map;
     }
 
 }

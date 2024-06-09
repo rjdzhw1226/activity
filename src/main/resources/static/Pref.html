@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="plugins/element-ui/index.css">
+  <script src="plugins/vue/vue.js"></script>
+  <script src="plugins/element-ui/index.js"></script>
+  <script src="plugins/axios/axios.min.js"></script>
+  <title>流程部署目录</title>
+</head>
+<body>
+<div id="app">
+  <el-table
+    :data="tableDataModel"
+    stripe
+    style="width: 100%"
+    @selection-change="handleSelectChange">
+    <el-table-column
+      type="selection"
+      align="center"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="id"
+      align="center"
+      label="部署流程实例ID"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="deploymentId"
+      align="center"
+      label="部署流程ID"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="name"
+      align="center"
+      label="部署流程名称"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="key"
+      align="center"
+      label="部署流程KEY"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="version"
+      align="center"
+      label="版本"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      prop="deploymentTime"
+      align="center"
+      label="部署时间"
+      width="auto">
+    </el-table-column>
+    <el-table-column
+      label="操作"
+      width="auto"
+      align="center"
+    >
+      <template slot-scope="scope">
+        <el-button
+          type="text"
+          size="small"
+          @click="start(scope.row.id)">
+          启动流程
+        </el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+  <el-dialog
+    title="启动流程"
+    :visible.sync="dialogVisible"
+    width="50%">
+    <el-form ref="form" :model="modelForm" label-width="auto">
+      <el-form-item label="业务businessKey">
+        <el-input v-model="modelForm.businessKey"></el-input>
+      </el-form-item>
+      <el-form-item label="用户ID">
+        <el-input v-model="modelForm.userId"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="onStart">启动</el-button>
+        <el-button type="info" @click="onCancel">取消</el-button>
+      </el-form-item>
+    </el-form>
+  </el-dialog>
+</div>
+</body>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      id:'',
+      dialogVisible: false,
+      modelForm:{},
+      tableDataModel: [],
+      selection: [],
+    },
+    created() {
+      this.queryModel()
+    },
+    methods: {
+      queryModel(){
+        axios.get("/activiti/listPage").then((res)=>{
+          this.tableDataModel = res.data;
+        })
+      },
+      start(id){
+        this.dialogVisible = true;
+        this.modelForm = {};
+        this.id = id;
+      },
+      onCancel() {
+        this.dialogVisible = false;
+      },
+      onStart(node){
+        axios.get("/activiti/start?definitionId="+this.id+"&businessKey="+this.modelForm.businessKey+"&userId="+this.modelForm.userId+"").then((res)=>{
+          this.$message({
+            type: 'info',
+            message: res.data
+          });
+        })
+        this.dialogVisible = false;
+      },
+      handleSelectChange(val){
+        this.selection = val;
+      },
+    },
+
+  })
+</script>
+</html>
+
