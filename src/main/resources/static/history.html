@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="./plugins/element-ui/index.css">
+  <script src="./plugins/vue/vue.js"></script>
+  <script src="./plugins/element-ui/index.js"></script>
+  <script src="./plugins/axios/axios.min.js"></script>
+</head>
+<body>
+<div id="testHtm">
+
+  <el-date-picker
+    v-model="value2"
+    type="daterange"
+    align="right"
+    unlink-panels
+    value-format="timestamp"
+    range-separator="至"
+    start-placeholder="开始日期"
+    end-placeholder="结束日期"
+
+    :picker-options="pickerOptions">
+  </el-date-picker><!--- :default-time="['00:00:00', '23:59:59']" ---->
+  <el-button type="primary"  id="btuclick" @click="seeClick">查询</el-button>
+  <el-table size="mediue" class="tablegg" height="90vh" border :data="DATATable" style="width: 100%;" v-loading="loading" element-loading-text="加载中...">
+    <el-table-column align="center" label="序号" type="index" width="100"></el-table-column>
+    <el-table-column align="center" label="类型" prop="type" width=""></el-table-column>
+    <el-table-column align="center" label="值" prop="value" width=""></el-table-column>
+    <el-table-column align="center" label="单位" prop="unit" width="100"></el-table-column>
+    <el-table-column align="center" label="时间" prop="time" width=""></el-table-column>
+  </el-table>
+</div>
+</body>
+<script>
+  new Vue({
+    el:'#testHtm',
+    data: function(){
+      return {
+        DATATable: [],
+        typeName:'',
+        unit: '',
+        value2: '',
+        loading: true,
+        pickerOptions: {
+          shortcuts: [{
+            text: '最近一周',
+            onClick(picker) {
+              const end = new Date();
+              const start = new Date();
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+              picker.$emit('pick', [start, end]);
+            }
+          }, {
+            text: '最近一个月',
+            onClick(picker) {
+              const end = new Date();
+              const start = new Date();
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+              picker.$emit('pick', [start, end]);
+            }
+          }, {
+            text: '最近三个月',
+            onClick(picker) {
+              const end = new Date();
+              const start = new Date();
+              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+              picker.$emit('pick', [start, end]);
+            }
+          }]
+        },
+      }
+    },
+    mounted(){
+      // console.log(window.location.href); // 获取页面地址
+      // console.log(window.location.search);  // 获取地址？之后的参数，包含？
+      // console.log(new Date().getTime());
+      this.typeName = this.GetQueryString('type');
+      this.unit = this.GetQueryString('unit');
+      // console.log(this.typeName, this.unit);
+      this.twoDaysDataEvent();
+    },
+    methods: {
+      twoDaysDataEvent() {
+        let nowtimestap = new Date().getTime()// h获取当前时间戳
+        this.loading = true;
+        const params_item = { name1: value1, name2: value2, name3: value3, name4: value5 }
+        this.history(params_item);
+      },
+      GetQueryString(name) {
+        console.log(name);
+        var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if(r!=null){
+          if (name == 'unit') {
+            return unescape(r[2]);
+          }
+          return decodeURI(r[2]);
+        }
+        return null;
+      },
+      seeClick() {  // 查询
+        const computer_days = (start, end) => Math.ceil(Math.abs(start-end)  / 86400000);  //  日期之间的天数
+        let start = this.value2[0]; let end = this.value2[1];
+        console.log(start, end);
+        console.log(computer_days(start, end));
+        if (this.value2.length > 0) {
+          if (this.value2[1] >= new Date().getTime()) {
+            this.$notify({
+              title: '提示',
+              type: 'error',
+              message: '“结束日期” 不能大于 “当前时间”',
+              duration: 3000
+            });
+            return
+          }
+          //接口事件触发
+        }
+        this.loading = true;
+        this.DATATable = [];
+        const params_its = { name1: value1, name2: value2, name3: value3, name4: value5 }
+        this.history(params_its);
+      },
+      history(params){
+        const para = { name1: value1, name2: value2, name3: value3, name4: value5  }
+        axios.post('http://xxxx..../xxxxxxxx/apiurl',para).then(res => {
+          if(res.data.code == 201){
+            let rdd = res.data.data;
+            let list = []; let timestopdata = [];
+            if (rdd.length > 0) {
+              rdd.forEach(ele => {
+                timestopdata = JSON.parse(ele.data_day_json);
+                timestopdata.forEach(item => {
+                  list.push({ type: this.typeName, value: item[1],unit: this.unit, time: this.timestampToDate(item[0]) })
+                })
+              })
+            }
+            list.reverse();
+            this.DATATable = list;
+          }else{
+            this.$message.warning(res.data.message)
+          }
+          this.loading = false;
+        })
+      },
+      timestampToDate(timestamp){
+        var date = new Date(timestamp * 1000);//时间戳为10位需*1000，时间戳为13位的话不需乘1000
+        var Y = date.getFullYear() + '-';
+        var M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+        var D = date.getDate() + ' ';
+        var h = date.getHours() + ':';
+        var m = date.getMinutes() + ':';
+        var s = date.getSeconds();
+        return Y+M+D.padStart(3,'0')+h.padStart(3,'0')+m.padStart(3,'0')+String(s).padStart(2,'0') ;
+      }
+    }
+  });
+</script>
+</html>
+
