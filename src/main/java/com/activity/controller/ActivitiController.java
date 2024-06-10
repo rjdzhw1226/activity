@@ -32,6 +32,7 @@ import org.activiti.image.ProcessDiagramGenerator;
 import org.activiti.image.impl.DefaultProcessDiagramGenerator;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
@@ -266,11 +267,17 @@ public class ActivitiController {
   /**
    * 查询自己处理的流程
    */
-  public void queryMine(){
-    Task task = taskService.createTaskQuery()
-      .processDefinitionKey("evection")
-      .taskAssignee("jack")
-      .singleResult();
+  @RequestMapping("/queryTask")
+  @ResponseBody
+  public List<taskVo> queryMine(){
+      List<taskVo> res = new ArrayList<>();
+      List<Task> list = taskService.createTaskQuery().active().orderByTaskCreateTime().desc().list();
+      for (Task task : list) {
+          taskVo taskVo = new taskVo();
+          BeanUtils.copyProperties(task, taskVo);
+          res.add(taskVo);
+      }
+      return res;
   }
 
     @RequestMapping("/completeTask/{id}")
