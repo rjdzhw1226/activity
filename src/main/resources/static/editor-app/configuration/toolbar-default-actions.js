@@ -1,7 +1,7 @@
 /*
  * Activiti Modeler component part of the Activiti project
  * Copyright 2005-2014 Alfresco Software, Ltd. All rights reserved.
- *
+ * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -43,33 +43,33 @@ KISBPM.TOOLBAR = {
 
                 // Force refresh of selection, might be that the undo command
                 // impacts properties in the selected item
-                if (services.$rootScope && services.$rootScope.forceSelectionRefresh)
+                if (services.$rootScope && services.$rootScope.forceSelectionRefresh) 
                 {
                 	services.$rootScope.forceSelectionRefresh = true;
                 }
-
+                
                 // Rollback every command
                 for (var i = lastCommands.length - 1; i >= 0; --i) {
                     lastCommands[i].rollback();
                 }
-
+                
                 // Update and refresh the canvas
                 services.$scope.editor.handleEvents({
                     type: ORYX.CONFIG.EVENT_UNDO_ROLLBACK,
                     commands: lastCommands
                 });
-
+                
                 // Update
                 services.$scope.editor.getCanvas().update();
                 services.$scope.editor.updateSelection();
             }
-
+            
             var toggleUndo = false;
             if (services.$scope.undoStack.length == 0)
             {
             	toggleUndo = true;
             }
-
+            
             var toggleRedo = false;
             if (services.$scope.redoStack.length > 0)
             {
@@ -101,10 +101,10 @@ KISBPM.TOOLBAR = {
             if (lastCommands) {
                 // Add this commands to the undo stack
                 services.$scope.undoStack.push(lastCommands);
-
+                
                 // Force refresh of selection, might be that the redo command
                 // impacts properties in the selected item
-                if (services.$rootScope && services.$rootScope.forceSelectionRefresh)
+                if (services.$rootScope && services.$rootScope.forceSelectionRefresh) 
                 {
                 	services.$rootScope.forceSelectionRefresh = true;
                 }
@@ -239,36 +239,31 @@ KISBPM.TOOLBAR = {
         zoomOut: function (services) {
             KISBPM.TOOLBAR.ACTIONS._getOryxViewPlugin(services.$scope).zoom([1.0 - ORYX.CONFIG.ZOOM_OFFSET]);
         },
-
+        
         zoomActual: function (services) {
             KISBPM.TOOLBAR.ACTIONS._getOryxViewPlugin(services.$scope).setAFixZoomLevel(1);
         },
-
+        
         zoomFit: function (services) {
         	KISBPM.TOOLBAR.ACTIONS._getOryxViewPlugin(services.$scope).zoomFitToModel();
         },
-
+        
         alignVertical: function (services) {
         	KISBPM.TOOLBAR.ACTIONS._getOryxArrangmentPlugin(services.$scope).alignShapes([ORYX.CONFIG.EDITOR_ALIGN_MIDDLE]);
         },
-
+        
         alignHorizontal: function (services) {
         	KISBPM.TOOLBAR.ACTIONS._getOryxArrangmentPlugin(services.$scope).alignShapes([ORYX.CONFIG.EDITOR_ALIGN_CENTER]);
         },
-
+        
         sameSize: function (services) {
         	KISBPM.TOOLBAR.ACTIONS._getOryxArrangmentPlugin(services.$scope).alignShapes([ORYX.CONFIG.EDITOR_ALIGN_SIZE]);
         },
-
+        
         closeEditor: function(services) {
-        	// window.location.href = "./";
-          if(window.confirm('确定放弃此次编辑吗？')){
-            var modelMetaData = services.$scope.editor.getModelMetaData();
-            location.href = "/activiti/close/" + modelMetaData.modelId;
-            window.history.back(-1);
-          }
+        	window.location.href = "./";
         },
-
+        
         /**
          * Helper method: fetches the Oryx View plugin from the provided scope,
          * if not on the scope, it is created and put on the scope for further use.
@@ -279,7 +274,7 @@ KISBPM.TOOLBAR = {
             }
             return $scope.oryxViewPlugin;
         },
-
+        
         _getOryxArrangmentPlugin: function ($scope) {
             if ($scope.oryxArrangmentPlugin === undefined || $scope.oryxArrangmentPlugin === null) {
                 $scope.oryxArrangmentPlugin = new ORYX.Plugins.Arrangement($scope.editor);
@@ -306,12 +301,12 @@ var SaveModelCtrl = [ '$rootScope', '$scope', '$http', '$route', '$location',
     if (modelMetaData.description) {
     	description = modelMetaData.description;
     }
-
+    
     var saveDialog = { 'name' : modelMetaData.name,
             'description' : description};
-
+    
     $scope.saveDialog = saveDialog;
-
+    
     var json = $scope.editor.getJSON();
     json = JSON.stringify(json);
 
@@ -344,16 +339,16 @@ var SaveModelCtrl = [ '$rootScope', '$scope', '$http', '$route', '$location',
         $scope.status = {
         	loading: true
         };
-
+        
         modelMetaData.name = $scope.saveDialog.name;
         modelMetaData.description = $scope.saveDialog.description;
 
         var json = $scope.editor.getJSON();
         json = JSON.stringify(json);
-
+        
         var selection = $scope.editor.getSelection();
         $scope.editor.setSelection([]);
-
+        
         // Get the serialized svg image source
         var svgClone = $scope.editor.getCanvas().getSVGRepresentation(true);
         $scope.editor.setSelection(selection);
@@ -381,7 +376,7 @@ var SaveModelCtrl = [ '$rootScope', '$scope', '$http', '$route', '$location',
         };
 
         // Update
-        $http({    method: 'PUT',
+        $http({    method: 'POST',
             data: params,
             ignoreErrors: true,
             headers: {'Accept': 'application/json',
@@ -401,7 +396,7 @@ var SaveModelCtrl = [ '$rootScope', '$scope', '$http', '$route', '$location',
                 });
                 $scope.modelData.name = $scope.saveDialog.name;
                 $scope.modelData.lastUpdated = data.lastUpdated;
-
+                
                 $scope.status.loading = false;
                 $scope.$hide();
 

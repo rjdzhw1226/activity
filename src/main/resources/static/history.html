@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="./plugins/element-ui/index.css">
-  <script src="./plugins/vue/vue.js"></script>
-  <script src="./plugins/element-ui/index.js"></script>
-  <script src="./plugins/axios/axios.min.js"></script>
+  <link rel="stylesheet" href="plugins/element-ui/index.css">
+  <script src="plugins/vue/vue.js"></script>
+  <script src="plugins/element-ui/index.js"></script>
+  <script src="plugins/axios/axios.min.js"></script>
 </head>
 <body>
 <div id="testHtm">
@@ -21,7 +21,7 @@
     end-placeholder="结束日期"
 
     :picker-options="pickerOptions">
-  </el-date-picker><!--- :default-time="['00:00:00', '23:59:59']" ---->
+  </el-date-picker>
   <el-button type="primary"  id="btuclick" @click="seeClick">查询</el-button>
   <el-table size="mediue" class="tablegg" height="90vh" border :data="DATATable" style="width: 100%;" v-loading="loading" element-loading-text="加载中...">
     <el-table-column align="center" label="序号" type="index" width="100"></el-table-column>
@@ -41,7 +41,7 @@
         typeName:'',
         unit: '',
         value2: '',
-        loading: true,
+        loading: false,
         pickerOptions: {
           shortcuts: [{
             text: '最近一周',
@@ -72,19 +72,15 @@
       }
     },
     mounted(){
-      // console.log(window.location.href); // 获取页面地址
-      // console.log(window.location.search);  // 获取地址？之后的参数，包含？
-      // console.log(new Date().getTime());
       this.typeName = this.GetQueryString('type');
       this.unit = this.GetQueryString('unit');
-      // console.log(this.typeName, this.unit);
       this.twoDaysDataEvent();
     },
     methods: {
       twoDaysDataEvent() {
         let nowtimestap = new Date().getTime()// h获取当前时间戳
         this.loading = true;
-        const params_item = { name1: value1, name2: value2, name3: value3, name4: value5 }
+        const params_item = { start: null, end: nowtimestap}
         this.history(params_item);
       },
       GetQueryString(name) {
@@ -92,7 +88,7 @@
         var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
         var r = window.location.search.substr(1).match(reg);
         if(r!=null){
-          if (name == 'unit') {
+          if (name === 'unit') {
             return unescape(r[2]);
           }
           return decodeURI(r[2]);
@@ -115,21 +111,25 @@
             return
           }
           //接口事件触发
+          this.loading = true;
+          this.DATATable = [];
+          const params_its = { start: start, end: end }
+          this.history(params_its);
         }
-        this.loading = true;
-        this.DATATable = [];
-        const params_its = { name1: value1, name2: value2, name3: value3, name4: value5 }
-        this.history(params_its);
+
       },
       history(params){
-        const para = { name1: value1, name2: value2, name3: value3, name4: value5  }
-        axios.post('http://xxxx..../xxxxxxxx/apiurl',para).then(res => {
-          if(res.data.code == 201){
+        const para = {
+          start: params.start,
+          end: params.end
+        }
+        axios.post('/activiti/history', para).then(res => {
+          if(res.data.code === 201){
             let rdd = res.data.data;
             let list = []; let timestopdata = [];
             if (rdd.length > 0) {
               rdd.forEach(ele => {
-                timestopdata = JSON.parse(ele.data_day_json);
+                timestopdata = JSON.parse(ele.dataDayJson);
                 timestopdata.forEach(item => {
                   list.push({ type: this.typeName, value: item[1],unit: this.unit, time: this.timestampToDate(item[0]) })
                 })

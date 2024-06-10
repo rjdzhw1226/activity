@@ -1,7 +1,7 @@
 /*
  * Activiti Modeler component part of the Activiti project
  * Copyright 2005-2014 Alfresco Software, Ltd. All rights reserved.
- *
+ * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -163,7 +163,7 @@ KISBPM.TOOLBAR_CONFIG = {
     	    "id" : "remove-bendpoint-button"
     	}
     ],
-
+    
     "secondaryItems" : [
 		{
 		    "type" : "button",

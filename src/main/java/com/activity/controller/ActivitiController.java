@@ -9,6 +9,10 @@ import com.activity.service.ActivitiService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.ApiParam;
 import org.activiti.bpmn.converter.BpmnXMLConverter;
 import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.bpmn.model.FlowNode;
@@ -457,6 +461,30 @@ public class ActivitiController {
         Map<String, List<user>> map = new HashMap<>();
         map.put("rows", users);
         return map;
+    }
+
+    @GetMapping("/getAllUser")
+    public CommonResponse getAllUser(@RequestParam(value = "pageNum", required = false,defaultValue = "1")
+                                     @ApiParam(value = "页码" ,required = false)int pageNum,
+                                     @RequestParam(value = "pageSize", required = false,defaultValue = "5")
+                                     @ApiParam(value = "条数" ,required = false)int pageSize){
+        Page<Object> pageObject = PageHelper.startPage(pageNum, pageSize);
+        List<ActIdUser> userList = new ArrayList<>();
+        userList.add(new ActIdUser("1",1,"R","JD","cf656779436@163.com","123456","www"));
+        userList.add(new ActIdUser("2",1,"K","FG","cf656779436@163.com","123456","www"));
+        userList.add(new ActIdUser("3",1,"B","WE","cf656779436@163.com","123456","www"));
+        PageInfo<ActIdUser> pageInfo = new PageInfo<>(userList);
+        return new CommonResponse().code("0000").data(pageInfo);
+    }
+
+    @GetMapping(value = "getAllGroup")
+    public CommonResponse getAllGroup(@RequestParam(value = "pageNum", required = false,defaultValue = "1")
+                                      @ApiParam(value = "页码" ,required = false)int pageNum,
+                                      @RequestParam(value = "pageSize", required = false,defaultValue = "5")
+                                      @ApiParam(value = "条数" ,required = false)int pageSize){
+        Page<Object> pageObject = PageHelper.startPage(pageNum, pageSize);
+        PageInfo<ActIdUser> pageInfo = new PageInfo<>(new ArrayList<>());
+        return new CommonResponse().code("0000").data(pageInfo);
     }
 
 }
